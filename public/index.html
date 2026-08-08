@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Certificate Portal | Mahendra Engineering College</title>
+  <meta name="description" content="Verify mobile number against CSV database and generate official event certificate filled with Student Name.">
+  
+  <!-- Google Fonts & Lucide Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- pdf-lib for Pure Client-side PDF Generation -->
+  <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="top-nav">
+    <div class="nav-container">
+      <div class="brand flex-center">
+        <!-- Mahendra Engineering College Logo -->
+        <img src="mahendra_logo.svg" alt="Mahendra Engineering College Logo" class="brand-logo-img">
+        <div class="brand-text">
+          <div class="college-name">Mahendra Engineering College (Autonomous)</div>
+          <div class="dept-name">Department of Electrical and Electronics Engineering (EEE)</div>
+        </div>
+      </div>
+      <div class="nav-badge">
+        <i data-lucide="shield-check"></i> Official Certificate Portal
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Hero & Application Container -->
+  <main class="main-layout">
+    <!-- Left Hero Info Sidebar -->
+    <section class="hero-sidebar">
+      <div class="hero-tag">
+        <i data-lucide="check-circle-2"></i> CSV Mobile Verification Portal
+      </div>
+      <h1 class="hero-title" id="hero-title-text">
+        Get your official event certificate in 3 quick steps.
+      </h1>
+      <p class="hero-desc" id="hero-desc-text">
+        Enter your registered mobile number to verify access, confirm your Student Name, and download your official certificate generated on template <code>6380161093.jpeg</code>.
+      </p>
+
+      <div class="features-list">
+        <div class="feature-item flex-center">
+          <div class="feat-icon flex-center"><i data-lucide="smartphone"></i></div>
+          <div>
+            <strong>CSV Mobile Verification</strong>
+            <p>Checks <code>allowed_students.csv</code> before granting access.</p>
+          </div>
+        </div>
+        <div class="feature-item flex-center">
+          <div class="feat-icon flex-center"><i data-lucide="user-check"></i></div>
+          <div>
+            <strong>Student Name Overlay</strong>
+            <p>Prints your name directly on <code>6380161093.jpeg</code> slot line.</p>
+          </div>
+        </div>
+        <div class="feature-item flex-center">
+          <div class="feat-icon flex-center"><i data-lucide="download"></i></div>
+          <div>
+            <strong>Instant PDF & Image Download</strong>
+            <p>Generated 100% in-browser using pure Vanilla JavaScript.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Portal Card Container -->
+    <section class="portal-card-container">
+
+      <!-- STEP 1: MOBILE NUMBER VERIFICATION -->
+      <div id="step-1-card" class="portal-card active">
+        <div class="card-header">
+          <span class="step-badge">Step 1 of 3</span>
+          <h2>Mobile Authentication</h2>
+          <p>Enter your registered mobile number to verify against the student CSV database.</p>
+        </div>
+
+        <div id="alert-error-step1" class="alert alert-error hidden">
+          <i data-lucide="alert-circle"></i>
+          <span id="alert-msg-step1">Access Denied: Mobile number not found.</span>
+        </div>
+
+        <form id="form-step1" onsubmit="handleMobileSubmit(event)">
+          <div class="form-group">
+            <label for="input-mobile">Registered Mobile Number <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <i data-lucide="smartphone" class="input-icon"></i>
+              <input type="tel" id="input-mobile" placeholder="e.g. 6380161093" value="6380161093" required autocomplete="tel" autofocus>
+            </div>
+            <p class="field-hint">Registered in <code>allowed_students.csv</code>.</p>
+          </div>
+
+          <button type="submit" id="btn-step1" class="btn btn-primary btn-full">
+            <span>Verify Mobile & Proceed</span>
+            <i data-lucide="arrow-right"></i>
+          </button>
+        </form>
+
+        <div class="demo-box">
+          <div class="demo-title"><i data-lucide="info"></i> Registered Demo Numbers:</div>
+          <div class="demo-tags">
+            <span class="tag" onclick="fillMobile('6380161093')">6380161093 (Dhilip)</span>
+            <span class="tag" onclick="fillMobile('9876543210')">9876543210 (Kavin)</span>
+            <span class="tag" onclick="fillMobile('9123456789')">9123456789 (Priya)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: STUDENT NAME FORM -->
+      <div id="step-2-card" class="portal-card hidden">
+        <div class="card-header flex-between">
+          <div>
+            <span class="step-badge success-badge"><i data-lucide="check"></i> Mobile Verified</span>
+            <h2>Enter Student Name</h2>
+          </div>
+          <button type="button" class="btn-text" onclick="goToStep(1)">
+            <i data-lucide="rotate-ccw"></i> Change Number
+          </button>
+        </div>
+
+        <div id="alert-error-step2" class="alert alert-error hidden">
+          <i data-lucide="alert-circle"></i>
+          <span id="alert-msg-step2">Please enter your student name.</span>
+        </div>
+
+        <form id="form-step2" onsubmit="handleDetailsSubmit(event)">
+          <div class="form-group">
+            <label for="input-name">Student Full Name <span class="required">*</span></label>
+            <div class="input-wrapper">
+              <i data-lucide="user" class="input-icon"></i>
+              <input type="text" id="input-name" placeholder="e.g. DHILIP KUMAR S" required>
+            </div>
+            <p class="field-hint">This name will be printed on your certificate underline slot.</p>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="input-event">Event Name</label>
+              <input type="text" id="input-event" value="PROJECT EXPO - 2026" readonly>
+            </div>
+            <div class="form-group flex-1">
+              <label for="input-dept">Department</label>
+              <input type="text" id="input-dept" value="EEE" readonly>
+            </div>
+          </div>
+
+          <button type="submit" id="btn-step2" class="btn btn-success btn-full">
+            <i data-lucide="award"></i>
+            <span>Generate Official Certificate</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- STEP 3: DYNAMIC CERTIFICATE PREVIEW & DOWNLOAD -->
+      <div id="step-3-card" class="portal-card hidden preview-card">
+        <div class="card-header flex-between">
+          <div>
+            <span class="step-badge gold-badge"><i data-lucide="award"></i> Official Certificate Generated</span>
+            <h2>Certificate Preview</h2>
+          </div>
+          <button type="button" class="btn-text" onclick="goToStep(2)">
+            <i data-lucide="edit-3"></i> Edit Name
+          </button>
+        </div>
+
+        <div class="cert-summary-grid">
+          <div class="sum-item">
+            <span class="sum-label">Student Name</span>
+            <span class="sum-val" id="summary-name">DHILIP KUMAR S</span>
+          </div>
+          <div class="sum-item">
+            <span class="sum-label">Mobile Number</span>
+            <span class="sum-val" id="summary-mobile">6380161093</span>
+          </div>
+          <div class="sum-item">
+            <span class="sum-label">Event Name</span>
+            <span class="sum-val">PROJECT EXPO - 2026</span>
+          </div>
+          <div class="sum-item">
+            <span class="sum-label">Template Image</span>
+            <span class="sum-val font-mono">6380161093.jpeg</span>
+          </div>
+        </div>
+
+        <!-- Canvas Container for Live Filled Template Preview -->
+        <div class="canvas-wrapper">
+          <div id="canvas-loader" class="canvas-loader flex-center">
+            <div class="spinner"></div>
+            <span>Filling 6380161093.jpeg template...</span>
+          </div>
+          <canvas id="cert-canvas" class="hidden"></canvas>
+        </div>
+
+        <!-- Download Buttons -->
+        <div class="action-buttons flex-center">
+          <button type="button" class="btn btn-emerald btn-lg flex-1" onclick="downloadCertificatePDF()">
+            <i data-lucide="download"></i>
+            <span>Download Official PDF</span>
+          </button>
+          <button type="button" class="btn btn-outline btn-lg" onclick="downloadCertificateImage()">
+            <i data-lucide="image"></i>
+            <span>Download PNG Image</span>
+          </button>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <footer class="footer text-center">
+    <p>Mahendra Engineering College (Autonomous) &copy; 2026. Department of Electrical & Electronics Engineering.</p>
+  </footer>
+
+  <!-- App Script -->
+  <script src="app.js"></script>
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+  </script>
+</body>
+</html>

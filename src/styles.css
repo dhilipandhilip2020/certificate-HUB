@@ -154,6 +154,164 @@
   }
 }
 
+@layer components {
+  .brand-header {
+    width: 100%;
+  }
+
+  .brand-header__inner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid color-mix(in srgb, var(--color-border) 88%, transparent);
+    border-radius: var(--radius-xl);
+    background: color-mix(in srgb, var(--color-card) 78%, transparent);
+    box-shadow: var(--shadow-card);
+  }
+
+  .brand-header__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    flex: 0 0 auto;
+    border-radius: 0.9rem;
+    background: var(--color-sidebar-primary);
+    color: var(--color-sidebar-primary-foreground);
+  }
+
+  .brand-header__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .brand-header__college {
+    font-size: clamp(1rem, 2vw, 1.9rem);
+    line-height: 1.12;
+    font-weight: 700;
+    color: var(--color-sidebar-foreground);
+    letter-spacing: -0.03em;
+  }
+
+  .brand-header__department {
+    margin-top: 0.22rem;
+    font-size: clamp(0.78rem, 1.5vw, 1rem);
+    line-height: 1.35;
+    color: color-mix(in srgb, var(--color-sidebar-foreground) 84%, transparent);
+  }
+
+  .brand-header__system {
+    margin-top: 0.34rem;
+    font-size: clamp(0.83rem, 1.48vw, 1.03rem);
+    line-height: 1.3;
+    font-weight: 700;
+    color: var(--color-sidebar-foreground);
+    letter-spacing: 0.01em;
+  }
+}
+
+@media (max-width: 1024px) {
+  .brand-header__inner {
+    padding: 0.9rem 1rem;
+  }
+
+  .brand-header__college {
+    font-size: clamp(0.98rem, 2.5vw, 1.55rem);
+  }
+
+  .brand-header__department {
+    font-size: clamp(0.74rem, 2vw, 0.88rem);
+  }
+
+  .brand-header__system {
+    font-size: clamp(0.78rem, 2vw, 0.94rem);
+  }
+}
+
+@media (max-width: 640px) {
+  .brand-header__inner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .brand-header__icon {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .brand-header__college,
+  .brand-header__department,
+  .brand-header__system {
+    text-align: left;
+  }
+}
+
+.admin-brand-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-card) 96%, transparent);
+  border: 1px solid var(--color-border);
+}
+
+.admin-brand-bar__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.55rem;
+  background: var(--color-sidebar-primary);
+  color: var(--color-sidebar-primary-foreground);
+}
+
+.admin-brand-bar__text {
+  min-width: 0;
+}
+
+.admin-brand-bar__college {
+  font-size: clamp(0.88rem, 2vw, 1.1rem);
+  line-height: 1.1;
+  font-weight: 700;
+  color: var(--color-foreground);
+}
+
+.admin-brand-bar__department {
+  margin-top: 0.14rem;
+  font-size: clamp(0.7rem, 1.4vw, 0.82rem);
+  line-height: 1.2;
+  color: var(--color-muted-foreground);
+}
+
+.admin-brand-bar__app {
+  margin-top: 0.14rem;
+  font-size: clamp(0.7rem, 1.5vw, 0.8rem);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--color-foreground);
+}
+
+@media (max-width: 640px) {
+  .admin-brand-bar {
+    align-items: flex-start;
+  }
+
+  .admin-brand-bar__text {
+    width: 100%;
+  }
+
+  .admin-brand-bar__college,
+  .admin-brand-bar__department,
+  .admin-brand-bar__app {
+    white-space: normal;
+  }
+}
+
 @utility surface-card {
   background-color: var(--color-card);
   border: 1px solid var(--color-border);

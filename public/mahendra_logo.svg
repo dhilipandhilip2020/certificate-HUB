@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300" width="300" height="300">
+  <defs>
+    <!-- Circular Path for Curved College Header Text -->
+    <path id="text-path" d="M 40,150 A 110,110 0 1,1 260,150" />
+    <linearGradient id="gold-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d97706" />
+      <stop offset="100%" stop-color="#b45309" />
+    </linearGradient>
+  </defs>
+
+  <!-- Outer Gear Wheel Border (Navy Blue) -->
+  <circle cx="150" cy="150" r="140" fill="#0f2942" stroke="#ffffff" stroke-width="4" />
+  
+  <!-- Outer Gear Teeth -->
+  <g fill="#0f2942">
+    <rect x="142" y="4" width="16" height="12" rx="2" />
+    <rect x="142" y="284" width="16" height="12" rx="2" />
+    <rect x="4" y="142" width="12" height="16" rx="2" />
+    <rect x="284" y="142" width="12" height="16" rx="2" />
+    <rect x="45" y="45" width="16" height="12" rx="2" transform="rotate(45 53 51)" />
+    <rect x="239" y="239" width="16" height="12" rx="2" transform="rotate(45 247 245)" />
+    <rect x="239" y="45" width="16" height="12" rx="2" transform="rotate(-45 247 51)" />
+    <rect x="45" y="239" width="16" height="12" rx="2" transform="rotate(-45 53 245)" />
+  </g>
+
+  <!-- Inner White Background Circle -->
+  <circle cx="150" cy="150" r="126" fill="#ffffff" stroke="#1e3a8a" stroke-width="3" />
+
+  <!-- Circular Sector Partition Lines -->
+  <circle cx="150" cy="150" r="105" fill="none" stroke="#1e3a8a" stroke-width="2" />
+  <line x1="150" y1="45" x2="150" y2="255" stroke="#1e3a8a" stroke-width="2" />
+  <line x1="45" y1="150" x2="255" y2="150" stroke="#1e3a8a" stroke-width="2" />
+  <line x1="75" y1="75" x2="225" y2="225" stroke="#1e3a8a" stroke-width="2" />
+  <line x1="225" y1="75" x2="75" y2="225" stroke="#1e3a8a" stroke-width="2" />
+
+  <!-- Central Inner Emblem Ring -->
+  <circle cx="150" cy="150" r="42" fill="#ffffff" stroke="#059669" stroke-width="3" />
+
+  <!-- Central Temple/Crest Emblem Graphic -->
+  <path d="M 150,118 L 164,136 L 158,136 L 158,168 L 142,168 L 142,136 L 136,136 Z" fill="#059669" />
+  <circle cx="150" cy="144" r="5" fill="#d97706" />
+
+  <!-- Department / Engineering Sector Graphics -->
+  <!-- Top Left: Satellite Dish -->
+  <path d="M 98,102 Q 112,88 122,105" fill="none" stroke="#0f2942" stroke-width="3" stroke-linecap="round" />
+  <line x1="110" y1="96" x2="125" y2="115" stroke="#0f2942" stroke-width="2.5" />
+  <line x1="125" y1="115" x2="112" y2="128" stroke="#0f2942" stroke-width="2" />
+
+  <!-- Top Right: Power Grid Electrical Tower -->
+  <path d="M 180,126 L 195,85 L 210,126 M 186,102 L 204,102 M 190,114 L 200,114" fill="none" stroke="#0f2942" stroke-width="2.5" />
+
+  <!-- Bottom Left: Computer Monitor & Keyboard -->
+  <rect x="85" y="175" width="30" height="20" rx="2" fill="none" stroke="#0f2942" stroke-width="2" />
+  <line x1="100" y1="195" x2="100" y2="202" stroke="#0f2942" stroke-width="2" />
+  <line x1="92" y1="202" x2="108" y2="202" stroke="#0f2942" stroke-width="2" />
+
+  <!-- Bottom Right: Generator / Electrical Motor -->
+  <rect x="180" y="176" width="28" height="20" rx="3" fill="none" stroke="#0f2942" stroke-width="2" />
+  <circle cx="194" cy="186" r="5" fill="none" stroke="#0f2942" stroke-width="2" />
+
+  <!-- Curved College Name Text Around Top Ring -->
+  <path id="arc-path" d="M 46,150 A 104,104 0 1,1 254,150" fill="none" />
+  <text font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="14" fill="#0f2942" letter-spacing="1.5">
+    <textPath href="#arc-path" startOffset="50%" text-anchor="middle">
+      MAHENDRA ENGINEERING COLLEGE
+    </textPath>
+  </text>
+
+  <!-- Bottom Banner Ribbon -->
+  <path d="M 70,240 Q 150,265 230,240 L 222,258 Q 150,280 78,258 Z" fill="#059669" />
+  <text x="150" y="254" font-family="Arial, sans-serif" font-weight="bold" font-size="10" fill="#ffffff" text-anchor="middle">
+    AUTONOMOUS
+  </text>
+</svg>

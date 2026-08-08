@@ -134,7 +134,23 @@ export function AdminLayout({
               <Menu className="size-5" />
             </button>
             <div className="min-w-0 flex-1">
-              <h1 className="truncate text-xl font-semibold text-foreground sm:text-2xl">{title}</h1>
+              <div className="admin-brand-bar">
+                <span className="admin-brand-bar__icon">
+                  <GraduationCap className="size-4" />
+                </span>
+                <div className="admin-brand-bar__text">
+                  <div className="admin-brand-bar__college">
+                    Mahendra Engineering College (Autonomous)
+                  </div>
+                  <div className="admin-brand-bar__department">
+                    Department of Electrical and Electronics Engineering (EEE)
+                  </div>
+                  <div className="admin-brand-bar__app">
+                    Certificate Distribution System
+                  </div>
+                </div>
+              </div>
+              <h1 className="mt-3 truncate text-xl font-semibold text-foreground sm:text-2xl">{title}</h1>
               {description && (
                 <p className="truncate text-sm text-muted-foreground">{description}</p>
               )}

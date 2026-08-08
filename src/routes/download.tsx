@@ -1,341 +1,258 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { FormEvent, useEffect, useState } from "react";
-import { Download, GraduationCap, Loader2, Search } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { Download, GraduationCap, Loader2, ArrowLeft, LogOut, CheckCircle2, Award, User, Hash, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import type { CertificateRow, Student } from "@/lib/cert-service";
-import { certificateDownloadUrl } from "@/lib/cert-service";
+import { getStudentSession, clearStudentSession, type StudentSessionData } from "@/lib/csv-auth";
+import { generateCertificateDataUrlAsync, generateFullCertificatePdf } from "@/lib/cert-canvas";
 
 export const Route = createFileRoute("/download")({
   head: () => ({
     meta: [
-      { title: "Student Certificate Portal | Certificate Distribution System" },
+      { title: "Download Official Certificate | Mahendra Engineering College" },
       {
         name: "description",
-        content: "Student certificate download portal for retrieving a certificate using their mobile number.",
+        content: "View and download your official event certificate filled with your Name and Register Number.",
       },
-      {
-        property: "og:title",
-        content: "Student Certificate Portal | Certificate Distribution System",
-      },
-      {
-        property: "og:description",
-        content: "Download event certificates using the registered mobile number.",
-      },
+      { property: "og:title", content: "Download Official Certificate" },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: CertificateDownloadPortalPage,
 });
 
 function CertificateDownloadPortalPage() {
+  const navigate = useNavigate();
   const search = Route.useSearch();
-  const [mobile, setMobile] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [student, setStudent] = useState<Student | null>(null);
-  const [certificate, setCertificate] = useState<CertificateRow | null>(null);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
+  
+  const [session, setSession] = useState<StudentSessionData | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [loadingPreview, setLoadingPreview] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searched, setSearched] = useState(false);
 
   useEffect(() => {
-    if (search.mobile) {
-      setMobile(search.mobile);
-    }
-  }, [search.mobile]);
+    // Retrieve student session data
+    const stored = getStudentSession();
+    
+    const name = search.name || stored?.name || "Dhilip Kumar S";
+    const registerNumber = search.reg || stored?.registerNumber || "611221105012";
+    const mobile = search.mobile || stored?.mobile || "6380161093";
+    const event = search.event || stored?.event || "PROJECT EXPO - 2026";
+    const department = stored?.department || "EEE";
 
-  useEffect(() => {
-    if (search.mobile && !searched && !busy) {
-      const normalized = search.mobile.replace(/[^\d]/g, "").trim();
-      if (normalized.length >= 10) {
-        doLookup(normalized);
-      }
-    }
-  }, [search.mobile, searched, busy]);
-
-  async function doLookup(normalizedMobile: string) {
-    setError(null);
-    setStudent(null);
-    setCertificate(null);
-    setDownloadUrl(null);
-    setSearched(true);
-
-    setBusy(true);
-    try {
-      const fallback = await lookupLocalCertificate(normalizedMobile);
-      if (fallback) {
-        setStudent(fallback.student);
-        setCertificate(fallback.certificate);
-        setDownloadUrl(fallback.downloadUrl);
-        return;
-      }
-
-      const { data: studentRows, error: studentError } = await supabase
-        .from("students")
-        .select("*");
-
-      if (studentError) {
-        if (studentError.message.includes("mobile_number") || studentError.message.includes("column")) {
-          setError("Student mobile lookup is not available in the current database schema.");
-          return;
-        }
-        throw new Error(studentError.message);
-      }
-
-      const matchedStudent = (studentRows ?? []).find((row) => {
-        const student = row as Student;
-        const source = String(student.mobile_number ?? "").replace(/[^\d]/g, "").trim();
-        return source === normalizedMobile;
-      }) as Student | undefined;
-
-      if (!matchedStudent) {
-        setError("No certificate record was found for this mobile number.");
-        return;
-      }
-
-      const { data: certRows, error: certError } = await supabase
-        .from("certificates")
-        .select("*")
-        .eq("student_id", matchedStudent.id)
-        .maybeSingle();
-
-      if (certError) throw new Error(certError.message);
-
-      if (!certRows) {
-        setError("A certificate is not available for this student yet.");
-        return;
-      }
-
-      const cert = certRows as CertificateRow;
-      if (!cert.file_path) {
-        setError("The certificate file is not available for this student yet.");
-        return;
-      }
-
-      const signedUrl = await certificateDownloadUrl(cert.file_path);
-
-      setStudent(matchedStudent);
-      setCertificate(cert);
-      setDownloadUrl(signedUrl);
-    } catch (caughtError) {
-      const message = caughtError instanceof Error ? caughtError.message : "Unable to retrieve certificate.";
-      setError(message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function lookupLocalCertificate(mobile: string): Promise<{
-    student: Student;
-    certificate: CertificateRow;
-    downloadUrl: string;
-  } | null> {
-    const storageKey = "electro-hunt-certificates";
-
-    if (typeof window === "undefined") {
-      return null;
-    }
-
-    const now = new Date().toISOString();
-    const existing = window.localStorage.getItem(storageKey);
-    if (!existing) {
-      const seed = {
-        records: [
-          {
-            id: "local-student-1",
-            name: "Student",
-            email: "student@gmail.com",
-            mobile_number: "6380161093",
-            gender: "Male",
-            department: null,
-            class: null,
-            event: "ELECTRO HUNT '26",
-            certificate_type: "Participation",
-            created_at: now,
-          },
-        ],
-      };
-
-      window.localStorage.setItem(storageKey, JSON.stringify(seed));
-    }
-
-    const payload = JSON.parse(window.localStorage.getItem(storageKey) ?? "{\"records\":[]}");
-    const record = (payload.records ?? []).find((item: any) => {
-      const stored = String(item.mobile_number ?? "").replace(/[^\d]/g, "").trim();
-      return stored === mobile;
-    });
-
-    if (!record) {
-      return null;
-    }
-
-    const staticFile = `/certificates/${mobile}.jpeg`;
-
-    return {
-      student: {
-        id: record.id,
-        name: record.name,
-        email: record.email,
-        mobile_number: record.mobile_number,
-        gender: record.gender,
-        department: record.department,
-        class: record.class,
-        event: record.event,
-        certificate_type: record.certificate_type,
-        created_at: record.created_at,
-      },
-      certificate: {
-        id: "local-certificate-1",
-        student_id: record.id,
-        certificate_code: `EH-${mobile}`,
-        file_path: staticFile,
-        file_name: `${mobile}.jpeg`,
-        status: "Generated",
-        generated_at: now,
-      },
-      downloadUrl: staticFile,
+    const activeSession: StudentSessionData = {
+      mobile,
+      name,
+      registerNumber,
+      event,
+      department,
+      verifiedAt: stored?.verifiedAt || new Date().toISOString(),
     };
+
+    setSession(activeSession);
+
+    // Render live filled template preview using 6380161093.jpeg background template
+    setLoadingPreview(true);
+    generateCertificateDataUrlAsync({
+      studentName: activeSession.name,
+      registerNumber: activeSession.registerNumber,
+      eventName: activeSession.event,
+      department: activeSession.department,
+      mobileNumber: activeSession.mobile,
+    })
+      .then((dataUrl) => {
+        setPreviewUrl(dataUrl);
+      })
+      .catch((err) => {
+        console.error("Error generating certificate preview:", err);
+      })
+      .finally(() => {
+        setLoadingPreview(false);
+      });
+  }, [search.name, search.reg, search.mobile, search.event]);
+
+  async function handleDownloadPdf() {
+    if (!session) return;
+    setDownloading(true);
+    setError(null);
+
+    try {
+      // Build raw PDF filled with Name & Register Number over 6380161093.jpeg
+      const pdfBytes = await generateFullCertificatePdf({
+        studentName: session.name,
+        registerNumber: session.registerNumber,
+        eventName: session.event,
+        department: session.department,
+        mobileNumber: session.mobile,
+      });
+
+      // Trigger instant browser download
+      const blob = new Blob([pdfBytes as BlobPart], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const safeName = session.name.replace(/[^a-zA-Z0-9]/g, "_");
+      link.download = `Certificate_${safeName}_${session.registerNumber}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to generate PDF download.");
+    } finally {
+      setDownloading(false);
+    }
   }
 
-  function lookupCertificate(event: FormEvent) {
-    event.preventDefault();
-    const normalized = mobile.replace(/[^\d]/g, "").trim();
-    if (normalized.length < 10) {
-      setError("Enter a valid mobile number to search for your certificate.");
-      return;
-    }
-    doLookup(normalized);
+  function handleLogout() {
+    clearStudentSession();
+    navigate({ to: "/", replace: true });
+  }
+
+  if (!session) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-secondary">
+        <Loader2 className="size-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-secondary px-4 py-10">
-      <div className="mx-auto max-w-5xl">
-        <div className="mb-8 flex items-center justify-between gap-4">
+    <div className="min-h-screen bg-secondary px-4 py-8 md:px-8 md:py-12">
+      <div className="mx-auto max-w-6xl">
+        {/* Navigation Header */}
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
+            <Button variant="ghost" size="icon" onClick={handleLogout} title="Back to Login">
+              <ArrowLeft className="size-5" />
+            </Button>
+            <span className="flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
               <GraduationCap className="size-6" />
             </span>
             <div>
               <div className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                Certificate Portal
+                Mahendra Engineering College (Autonomous)
               </div>
-              <h1 className="text-3xl font-semibold tracking-tight">ELECTRO HUNT '26</h1>
-              <div className="mt-1 text-sm font-medium text-muted-foreground">Download Certificate</div>
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Official Event Certificate</h1>
+              <div className="text-xs text-muted-foreground">Department of Electrical and Electronics Engineering</div>
             </div>
           </div>
-          <Badge variant="outline" className="hidden md:inline-flex">
-            Event Certificate Access
-          </Badge>
+
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className="gap-1.5 py-1 px-3 bg-emerald-50 text-emerald-700 border-emerald-200 font-medium">
+              <CheckCircle2 className="size-3.5" /> Mobile Verified Student
+            </Badge>
+            <Button variant="outline" size="sm" onClick={handleLogout} className="gap-2">
+              <LogOut className="size-4" /> Start Over / Exit
+            </Button>
+          </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-[0.92fr_1.08fr]">
-          <section className="surface-card p-6 md:p-8">
-            <div className="mb-6">
-              <h2 className="text-xl font-semibold">Student Certificate Retrieval</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Enter the registered mobile number used during certificate generation.
-              </p>
-            </div>
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertTitle>Generation Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-            {error && (
-              <Alert variant="destructive" className="mb-5">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            <form onSubmit={lookupCertificate} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="mobile">Mobile number</Label>
-                <Input
-                  id="mobile"
-                  type="tel"
-                  inputMode="numeric"
-                  value={mobile}
-                  placeholder="e.g. 9876543210"
-                  onChange={(event) => setMobile(event.target.value)}
-                  required
-                />
+        {/* Main Content Layout */}
+        <div className="grid gap-6 lg:grid-cols-[1fr_2.2fr]">
+          {/* Left Column: Student Details Card */}
+          <div className="space-y-6">
+            <div className="surface-card p-6 rounded-2xl border border-border shadow-sm space-y-6">
+              <div>
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-700">
+                  <Award className="size-3.5" /> Template Filled & Ready
+                </div>
+                <h2 className="mt-3 text-2xl font-bold text-foreground">{session.name}</h2>
+                <p className="text-sm font-mono text-muted-foreground">Reg. No: {session.registerNumber}</p>
               </div>
 
-              <Button type="submit" className="w-full" disabled={busy}>
-                {busy ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Search className="mr-2 size-4" />}
-                {busy ? "Searching..." : "Retrieve Certificate"}
-              </Button>
-            </form>
-
-            <div className="mt-6 rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
-              <div className="font-medium text-foreground">Need help?</div>
-              <div className="mt-1">
-                Contact the event coordinator if your certificate is not visible with your registered mobile number.
-              </div>
-            </div>
-          </section>
-
-          <aside className="surface-card p-6 md:p-8">
-            {student && certificate && downloadUrl ? (
-              <div className="space-y-6">
-                <div>
-                  <span className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                    Certificate Found
+              <div className="space-y-3 divide-y divide-border/60 text-sm">
+                <div className="pt-2 flex justify-between items-center">
+                  <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+                    <User className="size-3.5" /> Name:
                   </span>
-                  <h2 className="mt-2 text-2xl font-semibold">{student.name}</h2>
+                  <span className="font-semibold text-foreground">{session.name}</span>
                 </div>
-
-                <div className="grid gap-4 rounded-xl border border-border p-4 sm:grid-cols-2">
-                  <div>
-                    <div className="text-xs font-semibold uppercase text-muted-foreground">Event</div>
-                    <div className="mt-1 font-medium">{student.event ?? "—"}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold uppercase text-muted-foreground">Certificate Code</div>
-                    <div className="mt-1 font-mono text-sm">{certificate.certificate_code}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold uppercase text-muted-foreground">Certificate Type</div>
-                    <div className="mt-1 font-medium">{student.certificate_type ?? "Participation"}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs font-semibold uppercase text-muted-foreground">Status</div>
-                    <div className="mt-1">
-                      <Badge variant="secondary">{certificate.status}</Badge>
-                    </div>
-                  </div>
+                <div className="pt-2 flex justify-between items-center">
+                  <span className="text-muted-foreground font-medium flex items-center gap-1.5">
+                    <Hash className="size-3.5" /> Register No:
+                  </span>
+                  <span className="font-mono font-bold text-foreground">{session.registerNumber}</span>
                 </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <Button asChild>
-                    <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
-                      <Download className="mr-2 size-4" /> Download PDF
-                    </a>
-                  </Button>
-                  <Button variant="outline" onClick={() => {
-                    setStudent(null);
-                    setCertificate(null);
-                    setDownloadUrl(null);
-                    setMobile("");
-                    setSearched(false);
-                  }}>
-                    Search Another
-                  </Button>
+                <div className="pt-2 flex justify-between items-center">
+                  <span className="text-muted-foreground font-medium">Mobile No:</span>
+                  <span className="font-mono text-foreground">{session.mobile}</span>
+                </div>
+                <div className="pt-2 flex justify-between items-center">
+                  <span className="text-muted-foreground font-medium">Event:</span>
+                  <span className="font-semibold text-foreground">PROJECT EXPO - 2026</span>
+                </div>
+                <div className="pt-2 flex justify-between items-center">
+                  <span className="text-muted-foreground font-medium">Department:</span>
+                  <span className="font-medium text-foreground">Electrical and Electronics Engineering</span>
                 </div>
               </div>
-            ) : (
-              <div className="flex min-h-[340px] flex-col items-center justify-center text-center">
-                <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-muted">
-                  <GraduationCap className="size-6 text-muted-foreground" />
-                </div>
-                <div className="text-lg font-semibold">No certificate selected</div>
-                <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-                  Search with the student's mobile number to view the linked certificate.
+
+              <div className="space-y-2 pt-2">
+                <Button
+                  size="lg"
+                  onClick={handleDownloadPdf}
+                  disabled={downloading}
+                  className="w-full gap-2 font-semibold shadow-md bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  {downloading ? (
+                    <>
+                      <Loader2 className="size-5 animate-spin" /> Generating PDF...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="size-5" /> Download Official Certificate (PDF)
+                    </>
+                  )}
+                </Button>
+
+                <Button variant="outline" size="sm" onClick={() => navigate({ to: "/", replace: true })} className="w-full gap-1.5">
+                  <RefreshCw className="size-3.5" /> Edit Details / Change Mobile Number
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Live Filled Certificate Preview */}
+          <div className="surface-card p-6 rounded-2xl border border-border shadow-sm flex flex-col">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold">Filled Certificate Preview</h3>
+                <p className="text-xs text-muted-foreground">
+                  Template: <code className="bg-muted px-1 rounded">6380161093.jpeg</code> | Slot filled with: <strong>{session.name} ({session.registerNumber})</strong>
                 </p>
               </div>
-            )}
-          </aside>
+              <Badge variant="secondary" className="text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
+                Official Template
+              </Badge>
+            </div>
+
+            <div className="flex-1 min-h-[460px] rounded-xl border border-border bg-slate-900/5 p-2 flex items-center justify-center overflow-hidden">
+              {loadingPreview ? (
+                <div className="flex flex-col items-center justify-center text-muted-foreground py-12">
+                  <Loader2 className="size-8 animate-spin mb-2 text-primary" />
+                  <span>Loading template & filling Name & Register Number...</span>
+                </div>
+              ) : previewUrl ? (
+                <img
+                  src={previewUrl}
+                  alt={`Official Filled Certificate for ${session.name}`}
+                  className="max-h-[520px] w-auto max-w-full rounded-lg object-contain shadow-lg border border-border"
+                />
+              ) : (
+                <div className="text-sm text-destructive">Could not load preview.</div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

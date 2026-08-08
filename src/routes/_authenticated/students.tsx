@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as XLSX from "xlsx";
-import { AlertTriangle, Download, Pencil, Search, Trash2, Upload, UserPlus } from "lucide-react";
+import { AlertTriangle, Download, Pencil, Search, Trash2, Upload, UserPlus, FileUp, Smartphone, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/AdminLayout";
@@ -35,22 +35,17 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import type { Student } from "@/lib/cert-service";
 import { normalizeGender } from "@/lib/certificate";
+import { saveLocalCertificate } from "@/lib/mobile-cert-store";
 
 export const Route = createFileRoute("/_authenticated/students")({
   head: () => ({
     meta: [
-      { title: "Students | Certificate Distribution System" },
+      { title: "Students & Certificate Upload | Certificate Distribution System" },
       {
         name: "description",
-        content: "Import students from Excel, review validation errors and manage participant data.",
+        content: "Upload student certificates by mobile number or import students from Excel.",
       },
-      { property: "og:title", content: "Students | Certificate Distribution System" },
-      {
-        property: "og:description",
-        content: "Import students from Excel and manage participant records.",
-      },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+      { property: "og:title", content: "Students & Certificate Upload" },
     ],
   }),
   component: StudentsPage,
@@ -97,12 +92,23 @@ function StudentsPage() {
   const queryClient = useQueryClient();
   const { data: students = [], isLoading } = useStudents();
   const fileRef = useRef<HTMLInputElement>(null);
+  const certFileRef = useRef<HTMLInputElement>(null);
+
   const [parsed, setParsed] = useState<ParsedRow[] | null>(null);
   const [search, setSearch] = useState("");
   const [dept, setDept] = useState("all");
   const [cls, setCls] = useState("all");
   const [event, setEvent] = useState("all");
   const [editing, setEditing] = useState<Partial<Student> | null>(null);
+
+  // Upload Certificate By Mobile Dialog State
+  const [uploadCertDialogOpen, setUploadCertDialogOpen] = useState(false);
+  const [uploadMobile, setUploadMobile] = useState("");
+  const [uploadName, setUploadName] = useState("");
+  const [uploadEvent, setUploadEvent] = useState("ELECTRO HUNT '26");
+  const [uploadCertType, setUploadCertType] = useState("Participation Certificate");
+  const [selectedCertFile, setSelectedCertFile] = useState<File | null>(null);
+  const [uploadingCert, setUploadingCert] = useState(false);
 
   const options = useMemo(() => {
     const unique = (values: (string | null)[]) =>
@@ -121,7 +127,7 @@ function StudentsPage() {
         (dept === "all" || s.department === dept) &&
         (cls === "all" || s.class === cls) &&
         (event === "all" || s.event === event) &&
-        (!term || s.name.toLowerCase().includes(term) || s.email.toLowerCase().includes(term)),
+        (!term || s.name.toLowerCase().includes(term) || s.email?.toLowerCase().includes(term) || (s.mobile_number && s.mobile_number.includes(term))),
     );
   }, [students, search, dept, cls, event]);
 
@@ -136,7 +142,7 @@ function StudentsPage() {
       });
       if (!rows.length) throw new Error("The first sheet is empty.");
 
-      const existingEmails = new Set(students.map((s) => s.email.toLowerCase()));
+      const existingEmails = new Set(students.map((s) => s.email?.toLowerCase()));
       const seen = new Set<string>();
 
       const result: ParsedRow[] = rows.map((row, index) => {
@@ -147,14 +153,13 @@ function StudentsPage() {
         const errors: string[] = [];
 
         if (!name) errors.push("Missing student name");
-        if (!email) errors.push("Missing email");
-        else if (!EMAIL_RE.test(email)) errors.push("Invalid email address");
+        if (email && !EMAIL_RE.test(email)) errors.push("Invalid email address");
         if (!gender) errors.push("Missing gender");
-        if (mobile_number && mobile_number.replace(/[^\d]/g, "").length < 10) {
+        if (mobile_number && mobile_number.replace(/[^\d]/g, "").length < 7) {
           errors.push("Invalid mobile number");
         }
         if (email && seen.has(email)) errors.push("Duplicate email in this file");
-        if (email && existingEmails.has(email)) errors.push("Email already exists in the system");
+        if (email && existingEmails.has(email)) errors.push("Email already exists in system");
         if (email) seen.add(email);
 
         return {
@@ -172,9 +177,9 @@ function StudentsPage() {
       });
 
       setParsed(result);
-      toast.success(`Read ${result.length} row(s) from ${file.name}. Nothing has been saved yet.`);
+      toast.success(`Read ${result.length} row(s) from ${file.name}.`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not read the Excel file.");
+      toast.error(error instanceof Error ? error.message : "Could not read Excel file.");
     } finally {
       if (fileRef.current) fileRef.current.value = "";
     }
@@ -184,7 +189,7 @@ function StudentsPage() {
     mutationFn: async (rows: ParsedRow[]) => {
       const payload = rows.map((r) => ({
         name: r.name,
-        email: r.email,
+        email: r.email || `${r.mobile_number || Date.now()}@student.edu`,
         mobile_number: r.mobile_number ? r.mobile_number.replace(/[^\d]/g, "").trim() || null : null,
         gender: r.gender,
         department: r.department || null,
@@ -197,10 +202,9 @@ function StudentsPage() {
       return payload.length;
     },
     onSuccess: (count) => {
-      toast.success(`${count} student(s) imported. No emails were sent.`);
+      toast.success(`${count} student(s) imported.`);
       setParsed(null);
       queryClient.invalidateQueries({ queryKey: ["students"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -208,10 +212,9 @@ function StudentsPage() {
   const saveMutation = useMutation({
     mutationFn: async (student: Partial<Student>) => {
       if (!student.name?.trim()) throw new Error("Student name is required.");
-      if (!student.email || !EMAIL_RE.test(student.email)) throw new Error("A valid email is required.");
       const payload = {
         name: student.name.trim(),
-        email: student.email.trim().toLowerCase(),
+        email: student.email?.trim().toLowerCase() || `${student.mobile_number || Date.now()}@student.edu`,
         mobile_number: student.mobile_number ? student.mobile_number.replace(/[^\d]/g, "").trim() || null : null,
         gender: normalizeGender(student.gender),
         department: student.department || null,
@@ -219,17 +222,19 @@ function StudentsPage() {
         event: student.event || null,
         certificate_type: student.certificate_type || "Participation",
       };
-      const query = student.id
-        ? supabase.from("students").update(payload).eq("id", student.id)
-        : supabase.from("students").insert(payload);
-      const { error } = await query;
-      if (error) throw new Error(error.message);
+
+      if (student.id) {
+        const { error } = await supabase.from("students").update(payload).eq("id", student.id);
+        if (error) throw new Error(error.message);
+      } else {
+        const { error } = await supabase.from("students").insert(payload);
+        if (error) throw new Error(error.message);
+      }
     },
     onSuccess: () => {
-      toast.success("Student saved.");
+      toast.success(editing?.id ? "Student updated." : "Student created.");
       setEditing(null);
       queryClient.invalidateQueries({ queryKey: ["students"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -242,20 +247,85 @@ function StudentsPage() {
     onSuccess: () => {
       toast.success("Student removed.");
       queryClient.invalidateQueries({ queryKey: ["students"] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
 
+  async function handleUploadCertificateByMobile(e: React.FormEvent) {
+    e.preventDefault();
+    const normalized = uploadMobile.replace(/[^\d]/g, "").trim();
+    if (!normalized || normalized.length < 7) {
+      toast.error("Please enter a valid student mobile number.");
+      return;
+    }
+    if (!uploadName.trim()) {
+      toast.error("Please enter the student's name.");
+      return;
+    }
+    if (!selectedCertFile) {
+      toast.error("Please select a certificate PDF or image file.");
+      return;
+    }
+
+    setUploadingCert(true);
+    try {
+      // Read file as Data URL
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(selectedCertFile);
+      });
+
+      // Save into local store so student can log in instantly using mobile number
+      saveLocalCertificate({
+        name: uploadName.trim(),
+        email: `${normalized}@student.edu`,
+        mobile_number: normalized,
+        event: uploadEvent.trim(),
+        certificate_type: uploadCertType.trim(),
+        file_path: dataUrl,
+        file_name: selectedCertFile.name,
+        file_type: selectedCertFile.type || (selectedCertFile.name.endsWith(".pdf") ? "application/pdf" : "image/jpeg"),
+      });
+
+      // Optionally attempt to save in Supabase students table
+      try {
+        await supabase.from("students").upsert({
+          name: uploadName.trim(),
+          email: `${normalized}@student.edu`,
+          mobile_number: normalized,
+          event: uploadEvent.trim(),
+          certificate_type: uploadCertType.trim(),
+          gender: "Not Specified",
+        }, { onConflict: "mobile_number" });
+      } catch (dbErr) {
+        console.log("Supabase sync optional step:", dbErr);
+      }
+
+      toast.success(`Uploaded certificate for mobile number ${normalized}! The student can now log in using this number.`);
+      setUploadCertDialogOpen(false);
+      setUploadMobile("");
+      setUploadName("");
+      setSelectedCertFile(null);
+      queryClient.invalidateQueries({ queryKey: ["students"] });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to upload certificate file.");
+    } finally {
+      setUploadingCert(false);
+    }
+  }
+
   function downloadTemplateWorkbook() {
     const sheet = XLSX.utils.json_to_sheet([
       {
-        Name: "Kavin B",
-        Email: "kavin@example.com",
+        "Student Name": "John Doe",
+        Email: "john@example.com",
+        "Mobile Number": "6380161093",
         Gender: "Male",
         Department: "EEE",
-        Class: "EEE A",
-        Event: "Electro Hunt 2026",
+        Class: "III Year",
+        Event: "ELECTRO HUNT '26",
         "Certificate Type": "Participation",
       },
     ]);
@@ -269,10 +339,13 @@ function StudentsPage() {
 
   return (
     <AdminLayout
-      title="Students"
-      description="Import from Excel, review data and fix issues before generating certificates"
+      title="Students & Certificate Upload"
+      description="Upload certificates tied to student mobile numbers or import participant lists"
       actions={
         <>
+          <Button variant="default" onClick={() => setUploadCertDialogOpen(true)} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+            <FileUp className="size-4" /> Upload Certificate by Mobile
+          </Button>
           <Button variant="outline" onClick={downloadTemplateWorkbook}>
             <Download className="mr-2 size-4" /> Excel format
           </Button>
@@ -295,14 +368,94 @@ function StudentsPage() {
         </>
       }
     >
+      {/* Upload Certificate by Mobile Dialog */}
+      <Dialog open={uploadCertDialogOpen} onOpenChange={setUploadCertDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <FileUp className="size-5 text-emerald-600" /> Upload Certificate by Mobile Number
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleUploadCertificateByMobile} className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="upload-mobile" className="font-semibold">Student Mobile Number *</Label>
+              <div className="relative">
+                <Smartphone className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
+                <Input
+                  id="upload-mobile"
+                  type="tel"
+                  placeholder="e.g. 9876543210"
+                  className="pl-9"
+                  value={uploadMobile}
+                  onChange={(e) => setUploadMobile(e.target.value)}
+                  required
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">The student will log in using this mobile number to view/download the file.</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="upload-name" className="font-semibold">Student Name *</Label>
+              <Input
+                id="upload-name"
+                placeholder="e.g. John Doe"
+                value={uploadName}
+                onChange={(e) => setUploadName(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="upload-event">Event Name</Label>
+                <Input
+                  id="upload-event"
+                  value={uploadEvent}
+                  onChange={(e) => setUploadEvent(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="upload-certtype">Certificate Type</Label>
+                <Input
+                  id="upload-certtype"
+                  value={uploadCertType}
+                  onChange={(e) => setUploadCertType(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="upload-file" className="font-semibold">Select Certificate File (PDF or Image) *</Label>
+              <Input
+                id="upload-file"
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg"
+                onChange={(e) => setSelectedCertFile(e.target.files?.[0] || null)}
+                required
+              />
+              <p className="text-xs text-muted-foreground">Supports PDF documents and image files (.jpeg, .png).</p>
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" onClick={() => setUploadCertDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" disabled={uploadingCert}>
+                {uploadingCert ? <Loader2 className="mr-2 size-4 animate-spin" /> : <FileUp className="mr-2 size-4" />}
+                Save & Link to Mobile
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {parsed && (
         <div className="surface-card mb-6 p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-semibold">Import preview</h2>
               <p className="text-sm text-muted-foreground">
-                {validRows.length} valid · {invalidRows.length} with problems. Nothing is saved or
-                emailed until you confirm.
+                {validRows.length} valid · {invalidRows.length} with problems.
               </p>
             </div>
             <div className="flex gap-2">
@@ -326,134 +479,116 @@ function StudentsPage() {
                 <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm">
                   {invalidRows.slice(0, 12).map((row) => (
                     <li key={row.rowNumber}>
-                      Row {row.rowNumber} ({row.name || row.email || "blank"}):{" "}
+                      Row {row.rowNumber} ({row.name || row.mobile_number || "blank"}):{" "}
                       {row.errors.join(", ")}
                     </li>
                   ))}
-                  {invalidRows.length > 12 && <li>…and {invalidRows.length - 12} more</li>}
                 </ul>
               </AlertDescription>
             </Alert>
           )}
-
-          <div className="mt-4 max-h-80 overflow-auto rounded-lg border border-border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Row</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Gender</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Class</TableHead>
-                  <TableHead>Event</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {parsed.map((row) => (
-                  <TableRow key={row.rowNumber}>
-                    <TableCell className="text-muted-foreground">{row.rowNumber}</TableCell>
-                    <TableCell className="font-medium">{row.name || "—"}</TableCell>
-                    <TableCell>{row.email || "—"}</TableCell>
-                    <TableCell>{row.mobile_number || "—"}</TableCell>
-                    <TableCell>{row.gender || "—"}</TableCell>
-                    <TableCell>{row.department || "—"}</TableCell>
-                    <TableCell>{row.class || "—"}</TableCell>
-                    <TableCell>{row.event || "—"}</TableCell>
-                    <TableCell>
-                      {row.errors.length ? (
-                        <Badge variant="destructive">{row.errors[0]}</Badge>
-                      ) : (
-                        <Badge variant="secondary">Valid</Badge>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
         </div>
       )}
 
+      {/* Main Student List Table Card */}
       <div className="surface-card p-6">
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="relative min-w-56 flex-1">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
             <Input
+              placeholder="Search by student name, mobile or email..."
               className="pl-9"
-              placeholder="Search by name or email"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <FilterSelect label="Department" value={dept} onChange={setDept} options={options.departments} />
-          <FilterSelect label="Class" value={cls} onChange={setCls} options={options.classes} />
-          <FilterSelect label="Event" value={event} onChange={setEvent} options={options.events} />
+          <div className="flex flex-wrap gap-2">
+            <FilterSelect
+              label="Department"
+              value={dept}
+              onChange={setDept}
+              options={options.departments}
+            />
+            <FilterSelect label="Class" value={cls} onChange={setCls} options={options.classes} />
+            <FilterSelect label="Event" value={event} onChange={setEvent} options={options.events} />
+          </div>
         </div>
 
-        <div className="mt-4 overflow-x-auto rounded-lg border border-border">
+        <div className="rounded-lg border border-border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Mobile</TableHead>
-                <TableHead>Gender</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Class</TableHead>
+                <TableHead>Student Name</TableHead>
+                <TableHead>Mobile Number</TableHead>
                 <TableHead>Event</TableHead>
-                <TableHead>Type</TableHead>
+                <TableHead>Certificate Type</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading && (
+              {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
-                    Loading students…
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    Loading student records...
                   </TableCell>
                 </TableRow>
-              )}
-              {!isLoading && filtered.length === 0 && (
+              ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
-                    No students match the current filters.
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    No student records found. Click "Upload Certificate by Mobile" or "Add student" above.
                   </TableCell>
                 </TableRow>
+              ) : (
+                filtered.map((s) => (
+                  <TableRow key={s.id}>
+                    <TableCell className="font-medium">{s.name}</TableCell>
+                    <TableCell className="font-mono text-sm">{s.mobile_number || "—"}</TableCell>
+                    <TableCell>{s.event || "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{s.certificate_type || "Participation"}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setUploadMobile(s.mobile_number || "");
+                            setUploadName(s.name);
+                            setUploadEvent(s.event || "ELECTRO HUNT '26");
+                            setUploadCertDialogOpen(true);
+                          }}
+                          title="Upload Certificate for this Student"
+                        >
+                          <FileUp className="size-4 text-emerald-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEditing(s)}
+                          title="Edit Student"
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteMutation.mutate(s.id)}
+                          title="Delete Student"
+                        >
+                          <Trash2 className="size-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
-              {filtered.map((student) => (
-                <TableRow key={student.id}>
-                  <TableCell className="font-medium">{student.name}</TableCell>
-                  <TableCell>{student.email}</TableCell>
-                  <TableCell>{student.mobile_number ?? "—"}</TableCell>
-                  <TableCell>{student.gender}</TableCell>
-                  <TableCell>{student.department ?? "—"}</TableCell>
-                  <TableCell>{student.class ?? "—"}</TableCell>
-                  <TableCell>{student.event ?? "—"}</TableCell>
-                  <TableCell>{student.certificate_type ?? "—"}</TableCell>
-                  <TableCell className="text-right whitespace-nowrap">
-                    <Button variant="ghost" size="icon" onClick={() => setEditing(student)}>
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteMutation.mutate(student.id)}
-                    >
-                      <Trash2 className="size-4 text-destructive" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
             </TableBody>
           </Table>
         </div>
-        <p className="mt-3 text-sm text-muted-foreground">
-          {filtered.length} of {students.length} student(s) shown.
-        </p>
       </div>
 
+      {/* Edit Student Modal */}
       <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent>
           <DialogHeader>
@@ -463,8 +598,8 @@ function StudentsPage() {
             {(
               [
                 ["name", "Name"],
-                ["email", "Email"],
                 ["mobile_number", "Mobile Number"],
+                ["email", "Email"],
                 ["department", "Department"],
                 ["class", "Class"],
                 ["event", "Event"],
@@ -480,21 +615,6 @@ function StudentsPage() {
                 />
               </div>
             ))}
-            <div className="space-y-1.5">
-              <Label>Gender</Label>
-              <Select
-                value={normalizeGender(editing?.gender)}
-                onValueChange={(value) => setEditing((prev) => ({ ...prev, gender: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Male">Male</SelectItem>
-                  <SelectItem value="Female">Female</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)}>

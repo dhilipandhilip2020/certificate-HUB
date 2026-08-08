@@ -3,13 +3,45 @@
    Mahendra Engineering College (Autonomous)
    ========================================================================== */
 
-// Demo CSV Database Fallback
+// Demo CSV Database Fallback with the 37 Student Records
 const FALLBACK_CSV_DATA = [
-  { mobile: "6380161093", name: "DHILIP KUMAR S", reg: "611221105012", event: "PROJECT EXPO - 2026", dept: "EEE" },
-  { mobile: "9876543210", name: "KAVIN B", reg: "611221105018", event: "PROJECT EXPO - 2026", dept: "EEE" },
-  { mobile: "9123456789", name: "PRIYA R", reg: "611221105025", event: "PROJECT EXPO - 2026", dept: "EEE" },
-  { mobile: "9988776655", name: "SANTHOSH M", reg: "611221105030", event: "PROJECT EXPO - 2026", dept: "ECE" },
-  { mobile: "7010203040", name: "ANITHA P", reg: "611221105041", event: "PROJECT EXPO - 2026", dept: "CSE" }
+  { mobile: "9003886998", name: "RAMESH. S", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "6379228464", name: "PRATHAP S", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "9442849054", name: "SANJAY KUMAR V", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "8438371462", name: "VIJI. V", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "6374371774", name: "PRAVEEN. K", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "6381911160", name: "NISANTH.G", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "9025563441", name: "THARUNKUMAR T", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "9884375243", name: "SRIKANTH.S", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "8098897939", name: "T M SABARI", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "9087404182", name: "E.SAM ASHISH", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "8072337939", name: "SOWBAKYAA.S", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "7708488621", name: "VISHNUKUMAR V", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "7418180841", name: "R.POOJA SRI", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "9488560772", name: "RATHINAVEL. A", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "7338867535", name: "SHIVANI A", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "8344579635", name: "MUTHUKUMARAN B", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "9042879869", name: "NIVEDHA.G", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "9087345060", name: "THARANISH K", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "8807468040", name: "SUMESHWARAN", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "9344729296", name: "SEMMIYA.E", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "7695972456", name: "PAVITHRA G", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "9585431226", name: "V SARANGOBI", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "8778895117", name: "RITHICK KESAVAN.S", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "9363259394", name: "SRI HARINI", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "7010529256", name: "MURUGAN D", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "8754978401", name: "REEMA S", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "9566832099", name: "SITHARTH N", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "9344733250", name: "KAVIYA PRIYA.E", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "7305805419", name: "C SIVASANKAR", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "7867969906", name: "NAFEESH N", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "8122112118", name: "NANDHAKISHORE P.V.", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "9952272468", name: "ADARSHA LAKSHAN A.M", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "6382123044", name: "PUGALMURUGAN. P", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "9894750795", name: "SUJITH B", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "9361596038", name: "NAVAJEEVAN C", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "9361714142", name: "ILAYARAJA V", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" },
+  { mobile: "6383966548", name: "REKKA R", reg: "", event: "PROJECT EXPO - 2026", dept: "EEE" }
 ];
 
 // App State
@@ -130,8 +162,8 @@ function handleMobileSubmit(event) {
 
   // Verification successful! Set state and move to Step 2
   currentStudent.mobile = mobileInput;
-  currentStudent.name = (match.name || "DHILIP KUMAR S").toUpperCase();
-  currentStudent.reg = match.reg || "611221105012";
+  currentStudent.name = (match.name || "RAMESH. S").toUpperCase();
+  currentStudent.reg = match.reg || "";
   currentStudent.event = match.event || "PROJECT EXPO - 2026";
   currentStudent.dept = match.dept || "EEE";
 

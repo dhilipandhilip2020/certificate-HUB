@@ -32,7 +32,7 @@ function LoginPage() {
   const [step, setStep] = useState<1 | 2>(1);
   
   // Student input state
-  const [mobile, setMobile] = useState("6380161093");
+  const [mobile, setMobile] = useState("9003886998");
   const [verifiedRecord, setVerifiedRecord] = useState<CsvStudent | null>(null);
   
   const [studentName, setStudentName] = useState("");

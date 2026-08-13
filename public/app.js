@@ -243,9 +243,9 @@ function renderLiveCertificateCanvas() {
     ctx.fillStyle = "#0f172a"; // Deep navy color
     ctx.textAlign = "center";
 
-    // 4. Position BELOW Competition text and ABOVE the yellow line, centered
+    // 4. Position BELOW Competition text with gap, ABOVE the yellow line, centered
     const slotCenterX = W * 0.5;
-    const slotY = H * 0.46;
+    const slotY = H * 0.52;
 
     ctx.fillText(textToPrint, slotCenterX, slotY);
 
@@ -289,10 +289,10 @@ async function downloadCertificatePDF() {
     const fontSize = Math.max(Math.round(H * 0.028), 22);
     const textWidth = fontTimesBold.widthOfTextAtSize(textToPrint, fontSize);
 
-    // Calculate position - BELOW Competition text and ABOVE the yellow line, centered
+    // Calculate position - BELOW Competition text with gap, ABOVE the yellow line, centered
     const slotCenterX = W * 0.5;
     const x = slotCenterX - textWidth / 2;
-    const y = H * 0.54; // PDF coordinates start from bottom-left
+    const y = H * 0.48; // PDF coordinates start from bottom-left
 
     page.drawText(textToPrint, {
       x,

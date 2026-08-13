@@ -56,11 +56,11 @@ export async function generateFullCertificatePdf(details: CertificateDetails): P
     const fontSize = Math.max(Math.round(H * 0.028), 22);
     const textWidth = fontHelveticaBold.widthOfTextAtSize(textToPrint, fontSize);
 
-    // Slot position on 6380161093.jpeg - BELOW Competition text and ABOVE the yellow line, centered:
+    // Slot position on 6380161093.jpeg - BELOW Competition text with gap, ABOVE the yellow line, centered:
     const slotCenterX = W * 0.5;
     const x = slotCenterX - textWidth / 2;
 
-    const y = H * 0.54;
+    const y = H * 0.48;
     const navyColor = hexToRgb("#0f172a");
 
     // Draw Student Name on template line slot with Times Roman Bold font

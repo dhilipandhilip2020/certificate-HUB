@@ -60,7 +60,7 @@ export async function generateFullCertificatePdf(details: CertificateDetails): P
     const slotCenterX = W * 0.5;
     const x = slotCenterX - textWidth / 2;
 
-    const y = H * 0.48;
+    const y = H * 0.46;
     const navyColor = hexToRgb("#0f172a");
 
     // Draw Student Name on template line slot with Times Roman Bold font

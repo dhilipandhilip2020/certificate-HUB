@@ -237,15 +237,15 @@ function renderLiveCertificateCanvas() {
     // 2. Format text for slot: ONLY Student Name (NO Register Number)
     const textToPrint = currentStudent.name.toUpperCase();
 
-    // 3. Configure typography
+    // 3. Configure typography with Georgia font
     const fontSize = Math.max(Math.round(H * 0.028), 26);
-    ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+    ctx.font = `bold ${fontSize}px Georgia, serif`;
     ctx.fillStyle = "#0f172a"; // Deep navy color
     ctx.textAlign = "center";
 
-    // 4. Position ABOVE the yellow line, centered
+    // 4. Position BELOW Competition text and ABOVE the yellow line, centered
     const slotCenterX = W * 0.5;
-    const slotY = H * 0.42;
+    const slotY = H * 0.46;
 
     ctx.fillText(textToPrint, slotCenterX, slotY);
 
@@ -270,7 +270,7 @@ async function downloadCertificatePDF() {
   try {
     const { PDFDocument, StandardFonts, rgb } = window.PDFLib;
     const pdf = await PDFDocument.create();
-    const fontHelveticaBold = await pdf.embedFont(StandardFonts.HelveticaBold);
+    const fontTimesBold = await pdf.embedFont(StandardFonts.TimesRomanBold);
 
     // Fetch official 6380161093.jpeg template
     const res = await fetch("/certificates/6380161093.jpeg");
@@ -287,18 +287,18 @@ async function downloadCertificatePDF() {
     // Format text: ONLY Student Name
     const textToPrint = currentStudent.name.toUpperCase();
     const fontSize = Math.max(Math.round(H * 0.028), 22);
-    const textWidth = fontHelveticaBold.widthOfTextAtSize(textToPrint, fontSize);
+    const textWidth = fontTimesBold.widthOfTextAtSize(textToPrint, fontSize);
 
-    // Calculate position - ABOVE the yellow line, centered
+    // Calculate position - BELOW Competition text and ABOVE the yellow line, centered
     const slotCenterX = W * 0.5;
     const x = slotCenterX - textWidth / 2;
-    const y = H * 0.58; // PDF coordinates start from bottom-left
+    const y = H * 0.54; // PDF coordinates start from bottom-left
 
     page.drawText(textToPrint, {
       x,
       y,
       size: fontSize,
-      font: fontHelveticaBold,
+      font: fontTimesBold,
       color: rgb(15 / 255, 23 / 255, 42 / 255),
     });
 

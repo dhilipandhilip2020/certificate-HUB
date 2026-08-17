@@ -18,7 +18,7 @@ function hexToRgb(hex: string) {
 }
 
 /**
- * Generate PDF certificate using the official template image /certificates/6380161093.jpeg
+ * Generate PDF certificate using the official template image /certificates/6380161093.png (or .jpeg)
  * with ONLY Student Name printed in the slot line (Register number omitted from certificate text).
  */
 export async function generateFullCertificatePdf(details: CertificateDetails): Promise<Uint8Array> {
@@ -27,36 +27,47 @@ export async function generateFullCertificatePdf(details: CertificateDetails): P
   const fontTimesBold = await pdf.embedFont(StandardFonts.TimesRomanBold);
 
   let templateBytes: Uint8Array | null = null;
+  let isPng = true;
 
   try {
     if (typeof window !== "undefined") {
-      const res = await fetch("/certificates/6380161093.jpeg");
+      let res = await fetch("/certificates/6380161093.png");
+      if (res.ok) {
+        isPng = true;
+      } else {
+        res = await fetch("/certificates/6380161093.jpeg");
+        if (res.ok) {
+          isPng = false;
+        }
+      }
       if (res.ok) {
         const buf = await res.arrayBuffer();
         templateBytes = new Uint8Array(buf);
       }
     }
   } catch (err) {
-    console.warn("Could not fetch /certificates/6380161093.jpeg template:", err);
+    console.warn("Could not fetch certificate template image:", err);
   }
 
-  // If official 6380161093.jpeg template is loaded:
+  // If official template image is loaded:
   if (templateBytes) {
-    const jpgImage = await pdf.embedJpg(templateBytes);
-    const W = jpgImage.width;
-    const H = jpgImage.height;
+    const embeddedImage = isPng
+      ? await pdf.embedPng(templateBytes)
+      : await pdf.embedJpg(templateBytes);
+    const W = embeddedImage.width;
+    const H = embeddedImage.height;
 
     const page = pdf.addPage([W, H]);
-    page.drawImage(jpgImage, { x: 0, y: 0, width: W, height: H });
+    page.drawImage(embeddedImage, { x: 0, y: 0, width: W, height: H });
 
     // Format text to display in slot: ONLY Student Name
     const textToPrint = (details.studentName || "STUDENT NAME").toUpperCase();
 
     // Font size & calculation relative to image height
     const fontSize = Math.max(Math.round(H * 0.028), 22);
-    const textWidth = fontHelveticaBold.widthOfTextAtSize(textToPrint, fontSize);
+    const textWidth = fontTimesBold.widthOfTextAtSize(textToPrint, fontSize);
 
-    // Slot position on 6380161093.jpeg - BELOW Competition text with gap, ABOVE the yellow line, centered:
+    // Slot position on template - BELOW Competition text with gap, ABOVE the yellow line, centered:
     const slotCenterX = W * 0.5;
     const x = slotCenterX - textWidth / 2;
 
@@ -97,14 +108,13 @@ export async function generateFullCertificatePdf(details: CertificateDetails): P
 }
 
 /**
- * Generate a live image Data URL preview embedding ONLY Student Name on 6380161093.jpeg
+ * Generate a live image Data URL preview embedding ONLY Student Name on official template
  */
 export async function generateCertificateDataUrlAsync(details: CertificateDetails): Promise<string> {
   if (typeof window !== "undefined") {
     return new Promise((resolve) => {
       const img = new Image();
       img.crossOrigin = "anonymous";
-      img.src = "/certificates/6380161093.jpeg";
 
       img.onload = () => {
         const canvas = document.createElement("canvas");
@@ -124,19 +134,27 @@ export async function generateCertificateDataUrlAsync(details: CertificateDetail
 
         const textToPrint = (details.studentName || "STUDENT NAME").toUpperCase();
         const fontSize = Math.max(Math.round(H * 0.028), 26);
-        ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.font = `bold ${fontSize}px Georgia, serif`;
         ctx.fillStyle = "#0f172a";
         ctx.textAlign = "center";
 
-        const slotCenterX = W * 0.61;
-        const slotY = H * 0.528;
+        const slotCenterX = W * 0.5;
+        const slotY = H * 0.56;
 
         ctx.fillText(textToPrint, slotCenterX, slotY);
 
-        resolve(canvas.toDataURL("image/jpeg", 0.95));
+        resolve(canvas.toDataURL("image/png", 0.95));
       };
 
-      img.onerror = () => resolve("");
+      img.onerror = () => {
+        if (img.src.endsWith(".png")) {
+          img.src = "/certificates/6380161093.jpeg";
+        } else {
+          resolve("");
+        }
+      };
+
+      img.src = "/certificates/6380161093.png";
     });
   }
   return "";

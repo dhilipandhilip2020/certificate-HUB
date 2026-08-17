@@ -41,9 +41,9 @@ export function initializeMobileCertStore() {
           event: "ELECTRO HUNT '26",
           certificate_type: "Participation Certificate",
           certificate_code: "EH-6380161093",
-          file_path: "/certificates/6380161093.jpeg",
-          file_name: "6380161093.jpeg",
-          file_type: "image/jpeg",
+          file_path: "/certificates/6380161093.png",
+          file_name: "6380161093.png",
+          file_type: "image/png",
           created_at: now,
         },
       ],
@@ -145,7 +145,7 @@ export async function findCertificateByMobile(mobileInput: string): Promise<{
         generated_at: localMatch.created_at,
       },
       downloadUrl: localMatch.file_path,
-      fileType: localMatch.file_type,
+      fileType: localMatch.file_type || "image/png",
     };
   }
 
@@ -170,7 +170,7 @@ export async function findCertificateByMobile(mobileInput: string): Promise<{
 
         if (!certError && certRows && certRows.file_path) {
           const cert = certRows as CertificateRow;
-          const signedUrl = await certificateDownloadUrl(cert.file_path);
+          const signedUrl = await certificateDownloadUrl(cert.file_path!);
           return {
             student: matchedStudent,
             certificate: cert,

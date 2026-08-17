@@ -8,6 +8,12 @@ import { getStudentSession, clearStudentSession, type StudentSessionData } from 
 import { generateCertificateDataUrlAsync, generateFullCertificatePdf } from "@/lib/cert-canvas";
 
 export const Route = createFileRoute("/download")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    name: typeof search["name"] === "string" ? (search["name"] as string) : "",
+    reg: typeof search["reg"] === "string" ? (search["reg"] as string) : "",
+    mobile: typeof search["mobile"] === "string" ? (search["mobile"] as string) : "",
+    event: typeof search["event"] === "string" ? (search["event"] as string) : "",
+  }),
   head: () => ({
     meta: [
       { title: "Download Official Certificate | Mahendra Engineering College" },

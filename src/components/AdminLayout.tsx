@@ -101,6 +101,7 @@ export function AdminLayout({
         <div className="border-t border-sidebar-border p-3">
           <Link
             to="/download"
+            search={{ name: "", reg: "", mobile: "", event: "" }}
             onClick={() => setOpen(false)}
             className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >

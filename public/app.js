@@ -211,7 +211,7 @@ function handleDetailsSubmit(event) {
   renderLiveCertificateCanvas();
 }
 
-/** Step 3: Draw 6380161093.jpeg background template and overlay ONLY Student Name */
+/** Step 3: Draw background template and overlay ONLY Student Name */
 function renderLiveCertificateCanvas() {
   const canvas = document.getElementById("cert-canvas");
   const loader = document.getElementById("canvas-loader");
@@ -221,14 +221,13 @@ function renderLiveCertificateCanvas() {
 
   const img = new Image();
   img.crossOrigin = "anonymous";
-  img.src = "/certificates/6380161093.jpeg";
 
   img.onload = () => {
     canvas.width = img.naturalWidth || 1414;
     canvas.height = img.naturalHeight || 1000;
     const ctx = canvas.getContext("2d");
 
-    // 1. Draw 6380161093.jpeg background image
+    // 1. Draw background image
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
     const W = canvas.width;
@@ -255,9 +254,15 @@ function renderLiveCertificateCanvas() {
   };
 
   img.onerror = () => {
-    console.error("Could not load /certificates/6380161093.jpeg");
-    loader.innerHTML = "<p style='color:#ef4444;'>Error loading certificate template file 6380161093.jpeg.</p>";
+    if (img.src.endsWith(".png")) {
+      img.src = "/certificates/6380161093.jpeg";
+    } else {
+      console.error("Could not load certificate template");
+      loader.innerHTML = "<p style='color:#ef4444;'>Error loading certificate template file.</p>";
+    }
   };
+
+  img.src = "/certificates/6380161093.png";
 }
 
 /** Generate and download high-res PDF client-side using pdf-lib (ONLY Student Name) */
@@ -272,17 +277,22 @@ async function downloadCertificatePDF() {
     const pdf = await PDFDocument.create();
     const fontTimesBold = await pdf.embedFont(StandardFonts.TimesRomanBold);
 
-    // Fetch official 6380161093.jpeg template
-    const res = await fetch("/certificates/6380161093.jpeg");
-    if (!res.ok) throw new Error("Could not download 6380161093.jpeg template.");
+    // Fetch official template (.png first, then .jpeg)
+    let isPng = true;
+    let res = await fetch("/certificates/6380161093.png");
+    if (!res.ok) {
+      isPng = false;
+      res = await fetch("/certificates/6380161093.jpeg");
+    }
+    if (!res.ok) throw new Error("Could not download certificate template file.");
     const imgBuf = await res.arrayBuffer();
 
-    const jpgImage = await pdf.embedJpg(imgBuf);
-    const W = jpgImage.width;
-    const H = jpgImage.height;
+    const embeddedImage = isPng ? await pdf.embedPng(imgBuf) : await pdf.embedJpg(imgBuf);
+    const W = embeddedImage.width;
+    const H = embeddedImage.height;
 
     const page = pdf.addPage([W, H]);
-    page.drawImage(jpgImage, { x: 0, y: 0, width: W, height: H });
+    page.drawImage(embeddedImage, { x: 0, y: 0, width: W, height: H });
 
     // Format text: ONLY Student Name
     const textToPrint = currentStudent.name.toUpperCase();

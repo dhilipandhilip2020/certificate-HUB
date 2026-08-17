@@ -244,7 +244,7 @@ function renderLiveCertificateCanvas() {
 
     // 4. Position BELOW Competition text with gap, ABOVE the yellow line, centered
     const slotCenterX = W * 0.5;
-    const slotY = H * 0.56;
+    const slotY = H * 0.58;
 
     ctx.fillText(textToPrint, slotCenterX, slotY);
 
@@ -302,7 +302,7 @@ async function downloadCertificatePDF() {
     // Calculate position - BELOW Competition text with gap, ABOVE the yellow line, centered
     const slotCenterX = W * 0.5;
     const x = slotCenterX - textWidth / 2;
-    const y = H * 0.44; // PDF coordinates start from bottom-left
+    const y = H * 0.42; // PDF coordinates start from bottom-left
 
     page.drawText(textToPrint, {
       x,

@@ -32,7 +32,7 @@ function LoginPage() {
   const [step, setStep] = useState<1 | 2>(1);
   
   // Student input state
-  const [mobile, setMobile] = useState("9003886998");
+  const [mobile, setMobile] = useState("9361714142");
   const [verifiedRecord, setVerifiedRecord] = useState<CsvStudent | null>(null);
   
   const [studentName, setStudentName] = useState("");
@@ -306,7 +306,7 @@ function LoginPage() {
 
                   <div className="mt-6 rounded-xl bg-muted/60 p-3.5 text-center text-xs text-muted-foreground space-y-1">
                     <div className="font-semibold text-foreground">Demo Registered Mobile Numbers:</div>
-                    <div className="font-mono text-primary font-medium">6380161093 • 9876543210 • 9123456789</div>
+                    <div className="font-mono text-primary font-medium">9361714142 • 8148294456 • 8681009286</div>
                   </div>
                 </div>
               ) : (
